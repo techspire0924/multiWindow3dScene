@@ -7,6 +7,7 @@ let camera, scene, renderer, world;
 let near, far;
 let pixR = window.devicePixelRatio ? window.devicePixelRatio : 1;
 let cubes = [];
+let dots = []; // Array to store dots for each cube
 let sceneOffsetTarget = {x: 0, y: 0};
 let sceneOffset = {x: 0, y: 0};
 
@@ -112,12 +113,18 @@ else
 	{
 		let wins = windowManager.getWindows();
 
-		// remove all cubes
+		// remove all cubes and their dots
 		cubes.forEach((c) => {
 			world.remove(c);
 		})
+		dots.forEach((dotGroup) => {
+			dotGroup.forEach((dot) => {
+				world.remove(dot);
+			});
+		});
 
 		cubes = [];
+		dots = [];
 
 		// add new cubes based on the current window setup
 		for (let i = 0; i < wins.length; i++)
@@ -134,7 +141,42 @@ else
 
 			world.add(cube);
 			cubes.push(cube);
+
+			// Create dots around this cube
+			let cubeDots = createDotsAroundCube(cube, s, c, i);
+			dots.push(cubeDots);
 		}
+	}
+
+	function createDotsAroundCube (cube, cubeSize, cubeColor, cubeIndex)
+	{
+		let dotGroup = [];
+		let numDots = 12; // Number of dots per cube
+		let orbitRadius = cubeSize * 0.8; // Distance from cube center
+
+		for (let i = 0; i < numDots; i++)
+		{
+			// Create a small sphere for the dot
+			let dotGeometry = new t.SphereGeometry(5, 8, 8);
+			let dotMaterial = new t.MeshBasicMaterial({ 
+				color: cubeColor,
+				transparent: true,
+				opacity: 0.8
+			});
+			let dot = new t.Mesh(dotGeometry, dotMaterial);
+
+			// Store initial angle and orbit properties
+			dot.userData.angle = (i / numDots) * Math.PI * 2;
+			dot.userData.orbitRadius = orbitRadius;
+			dot.userData.orbitSpeed = 0.5 + (i % 3) * 0.2; // Varying speeds
+			dot.userData.verticalOffset = (i % 4 - 1.5) * (cubeSize * 0.3); // Vertical distribution
+			dot.userData.cubeIndex = cubeIndex;
+
+			world.add(dot);
+			dotGroup.push(dot);
+		}
+
+		return dotGroup;
 	}
 
 	function updateWindowShape (easing = true)
@@ -177,6 +219,24 @@ else
 			cube.position.y = cube.position.y + (posTarget.y - cube.position.y) * falloff;
 			cube.rotation.x = _t * .5;
 			cube.rotation.y = _t * .3;
+
+			// Update dots around this cube
+			if (dots[i])
+			{
+				dots[i].forEach((dot) => {
+					// Update orbit angle
+					dot.userData.angle += dot.userData.orbitSpeed * 0.01;
+
+					// Calculate dot position in orbit around cube
+					let radius = dot.userData.orbitRadius;
+					let angle = dot.userData.angle;
+					
+					// Orbit in XY plane with vertical offset
+					dot.position.x = cube.position.x + Math.cos(angle) * radius;
+					dot.position.y = cube.position.y + Math.sin(angle) * radius;
+					dot.position.z = cube.position.z + dot.userData.verticalOffset + Math.sin(angle * 2) * (radius * 0.2);
+				});
+			}
 		};
 
 		renderer.render(scene, camera);
