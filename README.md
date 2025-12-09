@@ -9,11 +9,45 @@ This project demonstrates a unique approach to creating and managing a 3D scene 
 - Dynamic window management and state synchronization using localStorage.
 
 ## Installation
-Clone the repository and open `index.html` in your browser to start exploring the 3D scene.
+Clone the repository:
 
 ```
-git clone https://github.com/bgstaal/multipleWindow3dScene
+git clone https://github.com/techspire0924/multiWindow3dScene
 ```
+
+## Running the Application
+
+**Important:** This project uses ES6 modules, which require a local web server to run. You cannot simply open `index.html` directly in your browser due to CORS restrictions.
+
+### Option 1: Using Python (Recommended)
+If you have Python installed, navigate to the project directory and run:
+
+```bash
+# Python 3
+python -m http.server 8000
+
+# Python 2
+python -m SimpleHTTPServer 8000
+```
+
+Then open `http://localhost:8000` in your browser.
+
+### Option 2: Using Node.js
+If you have Node.js installed, you can use `npx` to run a simple server:
+
+```bash
+npx serve
+```
+
+Or install `http-server` globally:
+```bash
+npm install -g http-server
+http-server
+```
+
+### Option 3: Using VS Code
+If you're using Visual Studio Code, install the "Live Server" extension and click "Go Live" in the status bar.
+
 ## Usage
 The main application logic is contained within `main.js` and `WindowManager.js`. The 3D scene is rendered in `index.html`, which serves as the entry point of the application.
 
@@ -32,10 +66,3 @@ Contributions to enhance or expand the project are welcome. Feel free to fork th
 
 ## License
 This project is open-sourced under the MIT License.
-
-## Acknowledgments
-- The Three.js team for their comprehensive 3D library.
-- x.com/didntdrinkwater for this readme.
-
-## Contact
-For more information and updates, follow [@_nonfigurativ_](https://twitter.com/_nonfigurativ_) on Twitter.
