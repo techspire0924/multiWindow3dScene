@@ -11,9 +11,32 @@
 			padding: 0;
 		}
 
+		#info-text {
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			color: rgba(255, 255, 255, 0.9);
+			font-family: Arial, sans-serif;
+			font-size: 13px;
+			background-color: rgba(180, 180, 250, 0.1);
+			padding: 12px 18px;
+			border-radius: 6px;
+			pointer-events: none;
+			z-index: 1000;
+			text-align: right;
+			line-height: 1.6;
+			max-width: 380px;
+		}
+
 	</style>
 </head>
 <body>
+	
+	<div id="info-text">
+		Open multiple browser windows to see synchronized spheres!<br>
+		Watch particles orbit with natural movement patterns.<br>
+		Move or resize windows to see spheres follow smoothly.
+	</div>
 	
 	<script type="module" src="main.js"></script>
 </body>
