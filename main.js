@@ -450,80 +450,80 @@ else
 		windowsUpdated();
 	}
 
-function windowsUpdated ()
-{
-	let wins = windowManager.getWindows();
-	let currentWindowCount = wins.length;
-	
-	// Only create orbiters in the first window (when windowCount === 1)
-	// Other windows will load orbiters data from localStorage
-	if (currentWindowCount === 1 && orbiters.length === 0)
+	function windowsUpdated ()
 	{
-		createSharedOrbiters();
-		// Save orbiters data immediately after creation
-		saveOrbitersTargetSpheresToLocalStorage();
-	}
-	// For subsequent windows (windowCount > 1), load orbiters from localStorage
-	else if (currentWindowCount > 1 && orbiters.length === 0)
-	{
-		loadOrbitersFromLocalStorage();
-	}
-	
-	// Sync orbiters state from localStorage (so all windows stay in sync)
-	// Only sync targetSphereIndex, not center positions (let them animate smoothly)
-	if (orbiters.length > 0)
-	{
-		try {
-			const saved = localStorage.getItem("orbitersData");
-			if (saved) {
-				const savedOrbitersData = JSON.parse(saved);
-				for (let i = 0; i < orbiters.length && i < savedOrbitersData.length; i++)
-				{
-					if (savedOrbitersData[i])
+		let wins = windowManager.getWindows();
+		let currentWindowCount = wins.length;
+		
+		// Only create orbiters in the first window (when windowCount === 1)
+		// Other windows will load orbiters data from localStorage
+		if (currentWindowCount === 1 && orbiters.length === 0)
+		{
+			createSharedOrbiters();
+			// Save orbiters data immediately after creation
+			saveOrbitersTargetSpheresToLocalStorage();
+		}
+		// For subsequent windows (windowCount > 1), load orbiters from localStorage
+		else if (currentWindowCount > 1 && orbiters.length === 0)
+		{
+			loadOrbitersFromLocalStorage();
+		}
+		
+		// Sync orbiters state from localStorage (so all windows stay in sync)
+		// Only sync targetSphereIndex, not center positions (let them animate smoothly)
+		if (orbiters.length > 0)
+		{
+			try {
+				const saved = localStorage.getItem("orbitersData");
+				if (saved) {
+					const savedOrbitersData = JSON.parse(saved);
+					for (let i = 0; i < orbiters.length && i < savedOrbitersData.length; i++)
 					{
-						// Update target sphere index only (centers will animate smoothly)
-						if (savedOrbitersData[i].targetSphereIndex !== undefined)
+						if (savedOrbitersData[i])
 						{
-							orbiters[i].targetSphereIndex = savedOrbitersData[i].targetSphereIndex;
+							// Update target sphere index only (centers will animate smoothly)
+							if (savedOrbitersData[i].targetSphereIndex !== undefined)
+							{
+								orbiters[i].targetSphereIndex = savedOrbitersData[i].targetSphereIndex;
+							}
 						}
 					}
 				}
+			} catch (e) {
+				console.warn("Failed to sync orbiters from localStorage", e);
 			}
-		} catch (e) {
-			console.warn("Failed to sync orbiters from localStorage", e);
 		}
-	}
-	
-	// Check if a new window was added
-	if (currentWindowCount > previousWindowCount && currentWindowCount > 0)
-	{
-		// New window added - update all orbiters' target sphere index to the latest sphere
-		let latestSphereIndex = currentWindowCount - 1;
 		
-		// Update all orbiters' target sphere index
-		for (let i = 0; i < orbiters.length; i++)
+		// Check if a new window was added
+		if (currentWindowCount > previousWindowCount && currentWindowCount > 0)
 		{
-			orbiters[i].targetSphereIndex = latestSphereIndex;
+			// New window added - update all orbiters' target sphere index to the latest sphere
+			let latestSphereIndex = currentWindowCount - 1;
+			
+			// Update all orbiters' target sphere index
+			for (let i = 0; i < orbiters.length; i++)
+			{
+				orbiters[i].targetSphereIndex = latestSphereIndex;
+			}
+			
+			// Save to localStorage immediately when new window is added
+			saveOrbitersTargetSpheresToLocalStorage();
 		}
 		
-		// Save to localStorage immediately when new window is added
-		saveOrbitersTargetSpheresToLocalStorage();
+		previousWindowCount = currentWindowCount;
+		updateWindowSpheres();
 	}
-	
-	previousWindowCount = currentWindowCount;
-	updateWindowSpheres();
-}
 
-function updateWindowSpheres ()
+	function updateWindowSpheres ()
 	{
 		let wins = windowManager.getWindows();
 
-	// remove all spheres
-	windowSpheres.forEach((s) => {
-		world.remove(s);
-	})
+		// remove all spheres
+		windowSpheres.forEach((s) => {
+			world.remove(s);
+		})
 
-	windowSpheres = [];
+		windowSpheres = [];
 
 		// add new spheres based on the current window setup
 		for (let i = 0; i < wins.length; i++)
@@ -533,13 +533,13 @@ function updateWindowSpheres ()
 			let c = new t.Color();
 			c.setHSL(i * .1, 1.0, .5);
 
-		let s = 100 + i * 50;
-		let sphere = new t.Mesh(new t.SphereGeometry(s * .5, 32, 32), new t.MeshBasicMaterial({color: c , wireframe: true}));
-		sphere.position.x = win.shape.x + (win.shape.w * .5);
-		sphere.position.y = win.shape.y + (win.shape.h * .5);
+			let s = 100 + i * 50;
+			let sphere = new t.Mesh(new t.SphereGeometry(s * .5, 32, 32), new t.MeshBasicMaterial({color: c , wireframe: true}));
+			sphere.position.x = win.shape.x + (win.shape.w * .5);
+			sphere.position.y = win.shape.y + (win.shape.h * .5);
 
-		world.add(sphere);
-		windowSpheres.push(sphere);
+			world.add(sphere);
+			windowSpheres.push(sphere);
 		}
 	}
 
