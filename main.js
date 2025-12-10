@@ -9,9 +9,9 @@ let pixR = window.devicePixelRatio ? window.devicePixelRatio : 1;
 let windowSpheres = [];
 let orbiters = [];
 let lastRenderTime = 0;
-const ORBITER_COUNT = 1000;
+const ORBITER_COUNT = 2000;
 const ORBITER_MIN_DISTANCE = 50;
-const ORBITER_MAX_DISTANCE = 150;
+const ORBITER_MAX_DISTANCE = 250;
 let sceneOffsetTarget = {x: 0, y: 0};
 let sceneOffset = {x: 0, y: 0};
 
@@ -364,7 +364,7 @@ else
 				orbiter.mesh.position.set(x, y, z);
 
 				// Check distance from center - if > 150, start moving
-				if (distanceFromCenter > 150)
+				if (distanceFromCenter > ORBITER_MAX_DISTANCE)
 				{
 					// Calculate random targetPos within distance 10 from center
 					const randomDistance = Math.random() * 10; // 0-10 units
