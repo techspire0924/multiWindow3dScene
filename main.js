@@ -9,9 +9,9 @@ let pixR = window.devicePixelRatio ? window.devicePixelRatio : 1;
 let windowSpheres = [];
 let orbiters = [];
 let lastRenderTime = 0;
-const ORBITER_COUNT = 800;
+const ORBITER_COUNT = 1500;
 const ORBITER_MIN_DISTANCE = 50;
-const ORBITER_MAX_DISTANCE = 250;
+const ORBITER_MAX_DISTANCE = 300;
 let sceneOffsetTarget = {x: 0, y: 0};
 let sceneOffset = {x: 0, y: 0};
 
@@ -93,6 +93,10 @@ else
 									if (savedOrbitersData[i].theta !== undefined) orbiters[i].theta = savedOrbitersData[i].theta;
 									if (savedOrbitersData[i].phi !== undefined) orbiters[i].phi = savedOrbitersData[i].phi;
 									if (savedOrbitersData[i].isMoving !== undefined) orbiters[i].isMoving = savedOrbitersData[i].isMoving;
+									if (savedOrbitersData[i].scale !== undefined) {
+										orbiters[i].scale = savedOrbitersData[i].scale;
+										orbiters[i].mesh.scale.set(savedOrbitersData[i].scale, savedOrbitersData[i].scale, savedOrbitersData[i].scale);
+									}
 									if (savedOrbitersData[i].center) {
 										orbiters[i].center.x = savedOrbitersData[i].center.x;
 										orbiters[i].center.y = savedOrbitersData[i].center.y;
@@ -168,7 +172,7 @@ else
 			const thetaSpeed = 0.03 + Math.random() * 0.2;
 			const phiSpeed = 0.02 + Math.random() * 0.1;
 			const phiDirection = Math.random() < 0.5 ? -1 : 1;
-			const scale = 0.05 + Math.random() * 0.1;
+			const scale = 0.05 + Math.random() * 0.2;
 			const centerMoveSpeed = 0.05 + Math.random() * 0.3;
 
 			mesh.scale.set(scale, scale, scale);
@@ -704,6 +708,12 @@ else
 							{
 								orbiters[i].center.x = savedOrbitersData[i].center.x;
 								orbiters[i].center.y = savedOrbitersData[i].center.y;
+							}
+							// Sync scale from localStorage
+							if (savedOrbitersData[i].scale !== undefined)
+							{
+								orbiters[i].scale = savedOrbitersData[i].scale;
+								orbiters[i].mesh.scale.set(savedOrbitersData[i].scale, savedOrbitersData[i].scale, savedOrbitersData[i].scale);
 							}
 						}
 					}
