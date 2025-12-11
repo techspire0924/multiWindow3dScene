@@ -1,7 +1,11 @@
 # Multiple Window 3D Scene using Three.js
 
+![Multi-Window 3D Scene](screenshot.png)
+
 ## Introduction
 This project demonstrates a unique approach to creating and managing a 3D scene across multiple browser windows using Three.js and localStorage. It features dynamic spheres that synchronize across windows, with thousands of small orbiting spheres that exhibit natural movement patterns inspired by elements in nature. The project is designed for developers interested in advanced web graphics, window management techniques, and organic animation systems.
+
+The image above shows three synchronized browser windows, each displaying a unique multi-layered wireframe sphere with a volumetric glow effect, surrounded by orbiting particles that create a dynamic, living particle system.
 
 ## Features
 - 3D scene creation and rendering with Three.js.

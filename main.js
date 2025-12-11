@@ -9,9 +9,9 @@ let pixR = window.devicePixelRatio ? window.devicePixelRatio : 1;
 let windowSpheres = [];
 let orbiters = [];
 let lastRenderTime = 0;
-const ORBITER_COUNT = 1500;
+const ORBITER_COUNT = 800;
 const ORBITER_MIN_DISTANCE = 50;
-const ORBITER_MAX_DISTANCE = 300;
+const ORBITER_MAX_DISTANCE = 250;
 let sceneOffsetTarget = {x: 0, y: 0};
 let sceneOffset = {x: 0, y: 0};
 
@@ -161,7 +161,7 @@ else
 			const material = new t.MeshBasicMaterial({
 				color: new t.Color().setHSL(1 / ORBITER_COUNT * i, 0.8, 0.6),
 				wireframe: true,
-				opacity: 0.4,
+				opacity: 0.4 - (i / 100) * 0.05,
 				transparent: true
 			});
 
@@ -172,7 +172,7 @@ else
 			const thetaSpeed = 0.03 + Math.random() * 0.2;
 			const phiSpeed = 0.02 + Math.random() * 0.1;
 			const phiDirection = Math.random() < 0.5 ? -1 : 1;
-			const scale = 0.05 + Math.random() * 0.2;
+			const scale = 0.05 + Math.random() * 0.5;
 			const centerMoveSpeed = 0.05 + Math.random() * 0.3;
 
 			mesh.scale.set(scale, scale, scale);
@@ -257,7 +257,7 @@ else
 				const material = new t.MeshBasicMaterial({
 					color: new t.Color().setHSL(i / ORBITER_COUNT * i, 0.8, 0.6),
 					wireframe: true,
-					opacity: 0.4,
+					opacity: Math.floor(i / 100 > 0 ? i / 100 + 2 : 2) * 0.05,
 					transparent: true
 				});
 
@@ -759,16 +759,124 @@ else
 		{
 			let win = wins[i];
 
-			let c = new t.Color();
-			c.setHSL(i * .1, 1.0, .5);
+			// Create vibrant color with better saturation and lightness
+			let baseColor = new t.Color();
+			baseColor.setHSL(i * 0.05, 0.7, 0.7);
+			
+			// Create emissive color (brighter version for glow)
+			let emissiveColor = baseColor.clone();
+			emissiveColor.multiplyScalar(1.5);
 
-			let s = 50 + i * 20;
-			let sphere = new t.Mesh(new t.SphereGeometry(s * .5, 32, 32), new t.MeshBasicMaterial({color: c , wireframe: true}));
-			sphere.position.x = win.shape.x + (win.shape.w * .5);
-			sphere.position.y = win.shape.y + (win.shape.h * .5);
+			let radius = 60 + i * 10;
+			let sphereSize = radius * 0.5;
 
-			world.add(sphere);
-			windowSpheres.push(sphere);
+			// Create parent container for all sphere layers
+			let sphereGroup = new t.Object3D();
+			sphereGroup.position.x = win.shape.x + (win.shape.w * .5);
+			sphereGroup.position.y = win.shape.y + (win.shape.h * .5);
+
+			// Main wireframe sphere - primary 3D body with lines
+			// const mainGeometry = new t.SphereGeometry(sphereSize, 6, 6);
+			// const mainMaterial = new t.MeshBasicMaterial({
+			// 	color: baseColor,
+			// 	emissive: emissiveColor,
+			// 	emissiveIntensity: 0.6,
+			// 	wireframe: true,
+			// 	transparent: true,
+			// 	opacity: 0.6
+			// });
+			// const mainSphere = new t.Mesh(mainGeometry, mainMaterial);
+			// sphereGroup.add(mainSphere);
+
+			// Secondary wireframe layer - denser inner structure
+			const innerWireframeGeometry = new t.SphereGeometry(sphereSize * 0.7, 12, 12);
+			const innerWireframeMaterial = new t.MeshBasicMaterial({
+				color: emissiveColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 0.5,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.5
+			});
+			const innerWireframe = new t.Mesh(innerWireframeGeometry, innerWireframeMaterial);
+			sphereGroup.add(innerWireframe);
+
+			// Outer wireframe layers - creating depth with multiple wireframe spheres
+			const outerWireframe1Geometry = new t.SphereGeometry(sphereSize * 1, 6, 6);
+			const outerWireframe1Material = new t.MeshBasicMaterial({
+				color: baseColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 0.3,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.3
+			});
+			const outerWireframe1 = new t.Mesh(outerWireframe1Geometry, outerWireframe1Material);
+			sphereGroup.add(outerWireframe1);
+
+			const outerWireframe2Geometry = new t.SphereGeometry(sphereSize * 1.2, 10, 10);
+			const outerWireframe2Material = new t.MeshBasicMaterial({
+				color: baseColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 0.2,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.25
+			});
+			const outerWireframe2 = new t.Mesh(outerWireframe2Geometry, outerWireframe2Material);
+			sphereGroup.add(outerWireframe2);
+
+			const outerWireframe3Geometry = new t.SphereGeometry(sphereSize * 1.4, 16, 16);
+			const outerWireframe3Material = new t.MeshBasicMaterial({
+				color: baseColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 0.15,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.1
+			});
+			const outerWireframe3 = new t.Mesh(outerWireframe3Geometry, outerWireframe3Material);
+			sphereGroup.add(outerWireframe3);
+
+			// Core wireframe layers - bright center structure (sparse)
+			const coreGeometry1 = new t.SphereGeometry(sphereSize * 0.2, 8, 6);
+			const coreMaterial1 = new t.MeshBasicMaterial({
+				color: emissiveColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 1.0,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.7
+			});
+			const core1 = new t.Mesh(coreGeometry1, coreMaterial1);
+			sphereGroup.add(core1);
+
+			const coreGeometry2 = new t.SphereGeometry(sphereSize * 0.2, 6, 5);
+			const coreMaterial2 = new t.MeshBasicMaterial({
+				color: emissiveColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 1.2,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.8
+			});
+			const core2 = new t.Mesh(coreGeometry2, coreMaterial2);
+			sphereGroup.add(core2);
+
+			const coreGeometry3 = new t.SphereGeometry(sphereSize * 0.2, 6, 4);
+			const coreMaterial3 = new t.MeshBasicMaterial({
+				color: emissiveColor,
+				emissive: emissiveColor,
+				emissiveIntensity: 1.5,
+				wireframe: true,
+				transparent: true,
+				opacity: 0.9
+			});
+			const core3 = new t.Mesh(coreGeometry3, coreMaterial3);
+			sphereGroup.add(core3);
+
+			world.add(sphereGroup);
+			windowSpheres.push(sphereGroup);
 		}
 	}
 
