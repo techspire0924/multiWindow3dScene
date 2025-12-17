@@ -20,6 +20,7 @@ The image above shows three synchronized browser windows, each displaying a uniq
 - **Multi-Window Synchronization**: All orbiting spheres are shared across all windows via localStorage, ensuring consistent state and behavior.
 - **Dynamic Target Following**: When new windows are added, all orbiting spheres smoothly transition to orbit around the latest sphere without sudden jumps.
 
+
 ## Installation
 Clone the repository:
 
