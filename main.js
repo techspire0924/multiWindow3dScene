@@ -1,4 +1,5 @@
 import WindowManager from './WindowManager.js'
+import NetworkManager from './src/networking.js'
 
 
 
@@ -28,6 +29,13 @@ let initialized = false;
 let previousWindowCount = 0;
 let lastSaveTime = 0;
 const SAVE_INTERVAL = 0.2; // Save to localStorage every 0.1 seconds for better position syncing
+
+// Networking variables
+let networkManager;
+let lastNetworkUpdate = 0;
+const NETWORK_UPDATE_INTERVAL = 0.05; // 50ms updates (20Hz)
+let useWebSocket = false; // Fallback to localStorage if WebSocket fails
+let networkMode = new URLSearchParams(window.location.search).get("mode") || "local";
 
 // get time in seconds since beginning of the day (so that all windows use the same time)
 function getTime ()
@@ -63,9 +71,24 @@ else
 		initialized = true;
 
 		// add a short timeout because window.offsetX reports wrong values before a short period 
-		setTimeout(() => {
+		setTimeout(async () => {
 			setupScene();
 			setupWindowManager();
+			
+			// Initialize networking if WebSocket mode is enabled
+			if (networkMode === "ws") {
+				try {
+					networkManager = NetworkManager;
+					await networkManager.connect();
+					useWebSocket = true;
+					console.log("WebSocket networking initialized");
+					setupNetworkHandlers();
+				} catch (error) {
+					console.error("Failed to initialize WebSocket, falling back to localStorage:", error);
+					useWebSocket = false;
+				}
+			}
+			
 			resize();
 			updateWindowShape(false);
 			render();
@@ -112,11 +135,66 @@ else
 		}, 500)	
 	}
 
+	function setupNetworkHandlers() {
+		// Handle window updates from other clients
+		networkManager.on('WINDOW_UPDATED', (data) => {
+			// Update window spheres based on network data
+			if (windowManager && windowManager.windows) {
+				const window = windowManager.windows.get(data.windowId);
+				if (window) {
+					window.x = data.position.x;
+					window.y = data.position.y;
+					window.w = data.size.width;
+					window.h = data.size.height;
+					updateWindowSpheres();
+				}
+			}
+		});
+		
+		// Handle orbiter updates from server
+		networkManager.on('ORBITERS_UPDATED', (data) => {
+			// Reconcile with server state
+			networkManager.reconcileWithServer(data);
+			
+			// Update local orbiters with authoritative positions
+			data.orbiters.forEach(orbiterData => {
+				if (orbiters[orbiterData.id]) {
+					// Smooth interpolation to new position
+					const currentPos = orbiters[orbiterData.id].mesh.position;
+					const targetPos = orbiterData.position;
+					
+					// Simple interpolation - could be improved with proper interpolation buffer
+					currentPos.x += (targetPos.x - currentPos.x) * 0.1;
+					currentPos.y += (targetPos.y - currentPos.y) * 0.1;
+					currentPos.z += (targetPos.z - currentPos.z) * 0.1;
+				}
+			});
+		});
+		
+		// Handle window removal when client disconnects
+		networkManager.on('WINDOW_REMOVED', (data) => {
+			if (windowManager && windowManager.windows) {
+				windowManager.windows.delete(data.windowId);
+				updateWindowSpheres();
+			}
+		});
+	}
+
+	function sendNetworkUpdates() {
+		if (!networkManager || !networkManager.connected) return;
+		
+		// Send window updates
+		networkManager.updateWindow({
+			position: { x: window.screenX, y: window.screenY },
+			size: { width: window.innerWidth, height: window.innerHeight }
+		});
+		
+		// Send orbiter updates
+		networkManager.updateOrbiters(orbiters);
+	}
+
 	function setupScene ()
 	{
-		camera = new t.OrthographicCamera(0, 0, window.innerWidth, window.innerHeight, -10000, 10000);
-		
-		camera.position.z = 2.5;
 		near = camera.position.z - .5;
 		far = camera.position.z + 0.5;
 
@@ -897,6 +975,12 @@ else
 
 		windowManager.update();
 
+		// Update network state at fixed intervals
+		if (useWebSocket && currentTime - lastNetworkUpdate >= NETWORK_UPDATE_INTERVAL) {
+			sendNetworkUpdates();
+			lastNetworkUpdate = currentTime;
+		}
+
 		// calculate the new position based on the delta between current offset and new offset times a falloff value (to create the nice smoothing effect)
 		let falloff = .05;
 		sceneOffset.x = sceneOffset.x + ((sceneOffsetTarget.x - sceneOffset.x) * falloff);
@@ -942,4 +1026,11 @@ else
 		camera.updateProjectionMatrix();
 		renderer.setSize( width, height );
 	}
+	
+	// Cleanup on window close
+	window.addEventListener('beforeunload', () => {
+		if (networkManager && useWebSocket) {
+			networkManager.disconnect();
+		}
+	});
 }
