@@ -2,15 +2,17 @@
   "name": "multiwindow3dscene",
   "version": "1.0.0",
   "description": "![Multi-Window 3D Scene](screenshot.png)",
-  "main": "main.js",
+  "main": "server/server.js",
   "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/KubanjaElijahEldred/multiWindow3dScene.git"
   },
-  "keywords": [],
+  "keywords": ["3d", "threejs", "websocket", "real-time", "multi-window"],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -20,5 +22,8 @@
   "dependencies": {
     "uuid": "^13.0.0",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
   }
 }

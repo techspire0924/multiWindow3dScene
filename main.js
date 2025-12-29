@@ -1,5 +1,5 @@
 import WindowManager from './WindowManager.js'
-import NetworkManager from './src/networking.js'
+import networkManager from './src/networking.js'
 
 
 
@@ -31,11 +31,11 @@ let lastSaveTime = 0;
 const SAVE_INTERVAL = 0.2; // Save to localStorage every 0.1 seconds for better position syncing
 
 // Networking variables
-let networkManager;
 let lastNetworkUpdate = 0;
-const NETWORK_UPDATE_INTERVAL = 0.05; // 50ms updates (20Hz)
+const NETWORK_UPDATE_INTERVAL = 50; // 50ms updates (20Hz) - standardized to ms
 let useWebSocket = false; // Fallback to localStorage if WebSocket fails
 let networkMode = new URLSearchParams(window.location.search).get("mode") || "local";
+let networkHandlersSetup = false; // Prevent duplicate handler registration
 
 // get time in seconds since beginning of the day (so that all windows use the same time)
 function getTime ()
@@ -78,11 +78,13 @@ else
 			// Initialize networking if WebSocket mode is enabled
 			if (networkMode === "ws") {
 				try {
-					networkManager = NetworkManager;
 					await networkManager.connect();
 					useWebSocket = true;
 					console.log("WebSocket networking initialized");
-					setupNetworkHandlers();
+					if (!networkHandlersSetup) {
+						setupNetworkHandlers();
+						networkHandlersSetup = true;
+					}
 				} catch (error) {
 					console.error("Failed to initialize WebSocket, falling back to localStorage:", error);
 					useWebSocket = false;
@@ -138,21 +140,31 @@ else
 	function setupNetworkHandlers() {
 		// Handle window updates from other clients
 		networkManager.on('WINDOW_UPDATED', (data) => {
+			// Guard against early messages during startup
+			if (!windowManager || !windowManager.windows) {
+				console.warn('Received WINDOW_UPDATE before windowManager was initialized');
+				return;
+			}
+			
 			// Update window spheres based on network data
-			if (windowManager && windowManager.windows) {
-				const window = windowManager.windows.get(data.windowId);
-				if (window) {
-					window.x = data.position.x;
-					window.y = data.position.y;
-					window.w = data.size.width;
-					window.h = data.size.height;
-					updateWindowSpheres();
-				}
+			const window = windowManager.windows.get(data.windowId);
+			if (window) {
+				window.x = data.position.x;
+				window.y = data.position.y;
+				window.w = data.size.width;
+				window.h = data.size.height;
+				updateWindowSpheres();
 			}
 		});
 		
 		// Handle orbiter updates from server
 		networkManager.on('ORBITERS_UPDATED', (data) => {
+			// Guard against early messages during startup
+			if (!orbiters || orbiters.length === 0) {
+				console.warn('Received ORBITERS_UPDATED before orbiters were initialized');
+				return;
+			}
+			
 			// Reconcile with server state
 			networkManager.reconcileWithServer(data);
 			
@@ -173,10 +185,14 @@ else
 		
 		// Handle window removal when client disconnects
 		networkManager.on('WINDOW_REMOVED', (data) => {
-			if (windowManager && windowManager.windows) {
-				windowManager.windows.delete(data.windowId);
-				updateWindowSpheres();
+			// Guard against early messages during startup
+			if (!windowManager || !windowManager.windows) {
+				console.warn('Received WINDOW_REMOVED before windowManager was initialized');
+				return;
 			}
+			
+			windowManager.windows.delete(data.windowId);
+			updateWindowSpheres();
 		});
 	}
 
@@ -975,10 +991,11 @@ else
 
 		windowManager.update();
 
-		// Update network state at fixed intervals
-		if (useWebSocket && currentTime - lastNetworkUpdate >= NETWORK_UPDATE_INTERVAL) {
+		// Update network state at fixed intervals (convert to ms for comparison)
+		const currentTimeMs = Date.now();
+		if (useWebSocket && currentTimeMs - lastNetworkUpdate >= NETWORK_UPDATE_INTERVAL) {
 			sendNetworkUpdates();
-			lastNetworkUpdate = currentTime;
+			lastNetworkUpdate = currentTimeMs;
 		}
 
 		// calculate the new position based on the delta between current offset and new offset times a falloff value (to create the nice smoothing effect)
@@ -1022,15 +1039,198 @@ else
 		let width = window.innerWidth;
 		let height = window.innerHeight
 		
-		camera = new t.OrthographicCamera(0, width, 0, height, -10000, 10000);
-		camera.updateProjectionMatrix();
-		renderer.setSize( width, height );
-	}
 	
-	// Cleanup on window close
-	window.addEventListener('beforeunload', () => {
-		if (networkManager && useWebSocket) {
-			networkManager.disconnect();
-		}
+	// Create emissive color (brighter version for glow)
+	let emissiveColor = baseColor.clone();
+	emissiveColor.multiplyScalar(1.5);
+
+	let radius = 60 + i * 10;
+	let sphereSize = radius * 0.5;
+
+	// Create parent container for all sphere layers
+	let sphereGroup = new t.Object3D();
+	sphereGroup.position.x = win.shape.x + (win.shape.w * .5);
+	sphereGroup.position.y = win.shape.y + (win.shape.h * .5);
+
+	// Main wireframe sphere - primary 3D body with lines
+	// const mainGeometry = new t.SphereGeometry(sphereSize, 6, 6);
+	// const mainMaterial = new t.MeshBasicMaterial({
+	// 	color: baseColor,
+	// 	emissive: emissiveColor,
+	// 	emissiveIntensity: 0.6,
+	// 	wireframe: true,
+	// 	transparent: true,
+	// 	opacity: 0.6
+	// });
+	// const mainSphere = new t.Mesh(mainGeometry, mainMaterial);
+	// sphereGroup.add(mainSphere);
+
+	// Secondary wireframe layer - denser inner structure
+	const innerWireframeGeometry = new t.SphereGeometry(sphereSize * 0.7, 12, 12);
+	const innerWireframeMaterial = new t.MeshBasicMaterial({
+		color: emissiveColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 0.5,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.5
 	});
+	const innerWireframe = new t.Mesh(innerWireframeGeometry, innerWireframeMaterial);
+	sphereGroup.add(innerWireframe);
+
+	// Outer wireframe layers - creating depth with multiple wireframe spheres
+	const outerWireframe1Geometry = new t.SphereGeometry(sphereSize * 1, 6, 6);
+	const outerWireframe1Material = new t.MeshBasicMaterial({
+		color: baseColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 0.3,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.3
+	});
+	const outerWireframe1 = new t.Mesh(outerWireframe1Geometry, outerWireframe1Material);
+	sphereGroup.add(outerWireframe1);
+
+	const outerWireframe2Geometry = new t.SphereGeometry(sphereSize * 1.2, 10, 10);
+	const outerWireframe2Material = new t.MeshBasicMaterial({
+		color: baseColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 0.2,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.25
+	});
+	const outerWireframe2 = new t.Mesh(outerWireframe2Geometry, outerWireframe2Material);
+	sphereGroup.add(outerWireframe2);
+
+	const outerWireframe3Geometry = new t.SphereGeometry(sphereSize * 1.4, 16, 16);
+	const outerWireframe3Material = new t.MeshBasicMaterial({
+		color: baseColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 0.15,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.1
+	});
+	const outerWireframe3 = new t.Mesh(outerWireframe3Geometry, outerWireframe3Material);
+	sphereGroup.add(outerWireframe3);
+
+	// Core wireframe layers - bright center structure (sparse)
+	const coreGeometry1 = new t.SphereGeometry(sphereSize * 0.2, 8, 6);
+	const coreMaterial1 = new t.MeshBasicMaterial({
+		color: emissiveColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 1.0,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.7
+	});
+	const core1 = new t.Mesh(coreGeometry1, coreMaterial1);
+	sphereGroup.add(core1);
+
+	const coreGeometry2 = new t.SphereGeometry(sphereSize * 0.2, 6, 5);
+	const coreMaterial2 = new t.MeshBasicMaterial({
+		color: emissiveColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 1.2,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.8
+	});
+	const core2 = new t.Mesh(coreGeometry2, coreMaterial2);
+	sphereGroup.add(core2);
+
+	const coreGeometry3 = new t.SphereGeometry(sphereSize * 0.2, 6, 4);
+	const coreMaterial3 = new t.MeshBasicMaterial({
+		color: emissiveColor,
+		emissive: emissiveColor,
+		emissiveIntensity: 1.5,
+		wireframe: true,
+		transparent: true,
+		opacity: 0.9
+	});
+	const core3 = new t.Mesh(coreGeometry3, coreMaterial3);
+	sphereGroup.add(core3);
+
+	world.add(sphereGroup);
+	windowSpheres.push(sphereGroup);
+}
+
+function updateWindowShape (easing = true)
+{
+	// storing the actual offset in a proxy that we update against in the render function
+	sceneOffsetTarget = {x: -window.screenX, y: -window.screenY};
+	if (!easing) sceneOffset = sceneOffsetTarget;
+}
+
+
+function render ()
+{
+	let currentTime = getTime();
+	let deltaTime = lastRenderTime ? currentTime - lastRenderTime : 0.016;
+	lastRenderTime = currentTime;
+	deltaTime = Math.min(deltaTime, 0.2);
+
+	windowManager.update();
+
+	// Update network state at fixed intervals (convert to ms for comparison)
+	const currentTimeMs = Date.now();
+	if (useWebSocket && currentTimeMs - lastNetworkUpdate >= NETWORK_UPDATE_INTERVAL) {
+		sendNetworkUpdates();
+		lastNetworkUpdate = currentTimeMs;
+	}
+
+	// calculate the new position based on the delta between current offset and new offset times a falloff value (to create the nice smoothing effect)
+	let falloff = .05;
+	sceneOffset.x = sceneOffset.x + ((sceneOffsetTarget.x - sceneOffset.x) * falloff);
+	sceneOffset.y = sceneOffset.y + ((sceneOffsetTarget.y - sceneOffset.y) * falloff);
+
+	// set the world position to the offset
+	world.position.x = sceneOffset.x;
+	world.position.y = sceneOffset.y;
+
+	let wins = windowManager.getWindows();
+	// loop through all our spheres and update their positions based on current window positions
+	for (let i = 0; i < windowSpheres.length; i++)
+	{
+		let sphere = windowSpheres[i];
+		let win = wins[i];
+		if (!win) continue;
+
+		let rotationTime = currentTime;
+
+		let posTarget = {x: win.shape.x + (win.shape.w * .5), y: win.shape.y + (win.shape.h * .5)}
+
+		sphere.position.x = sphere.position.x + (posTarget.x - sphere.position.x) * falloff;
+		sphere.position.y = sphere.position.y + (posTarget.y - sphere.position.y) * falloff;
+		sphere.rotation.x = rotationTime * .5;
+		sphere.rotation.y = rotationTime * .3;
+	};
+
+	// Update orbiters - they will calculate centers from their target sphere indices in real-time
+	updateOrbiters(windowSpheres, deltaTime);
+
+	renderer.render(scene, camera);
+	requestAnimationFrame(render);
+}
+
+
+// resize the renderer to fit the window size
+function resize ()
+{
+	let width = window.innerWidth;
+	let height = window.innerHeight
+	
+	camera = new t.OrthographicCamera(0, width, 0, height, -10000, 10000);
+	camera.updateProjectionMatrix();
+	renderer.setSize( width, height );
+}
+	
+// Cleanup on window close
+window.addEventListener('beforeunload', () => {
+	// Always disconnect networkManager if it exists to clean up timers/intervals
+	if (networkManager) {
+		networkManager.disconnect();
+	}
+});
 }

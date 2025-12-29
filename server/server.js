@@ -266,12 +266,12 @@ function handlePing(clientId, data) {
     client.lastPing = Date.now();
     client.latency = Date.now() - data.timestamp;
     
-    // Send pong response
+    // Send pong response echoing client's timestamp and including server time
     if (client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(JSON.stringify({
             type: 'PONG',
-            timestamp: Date.now(),
-            serverTime: Date.now()
+            timestamp: data.timestamp, // Echo client's original timestamp
+            serverTime: Date.now() // Include server time
         }));
     }
 }

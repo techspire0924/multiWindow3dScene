@@ -1,5 +1,5 @@
 class NetworkManager {
-    constructor() {
+    constructor(options = {}) {
         this.socket = null;
         this.clientId = null;
         this.windowId = null;
@@ -22,9 +22,9 @@ class NetworkManager {
         
         // Performance optimization
         this.lastNetworkUpdate = 0;
-        this.networkUpdateInterval = 50; // 50ms = 20Hz updates
+        this.networkUpdateInterval = options.updateInterval || 50; // 50ms = 20Hz updates (in ms)
         this.pendingDeltas = [];
-        this.deltaThreshold = 0.01; // Minimum movement to send delta
+        this.deltaThreshold = options.deltaThreshold || 0.01; // Minimum movement to send delta (in world units)
     }
 
     connect(serverUrl = `ws://${window.location.hostname}:8080`) {
